@@ -28,7 +28,7 @@ groups:
     labels: {severity: warning}
     annotations:
       summary: "服务器 网络出流量过高 ({{ $labels.instance }})"
-      description: "网络出流量 > 10MB/s (当前值: {{ $value | humanizeBytes }})"
+      description: "网络出流量 > 10MB/s (当前值: {{ $value }} bytes/s)"  # 替换humanizeBytes
   - alert: HighSystemLoad
     expr: node_load1 > 4
     for: 1m

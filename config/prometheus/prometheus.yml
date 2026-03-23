@@ -4,7 +4,7 @@ global:
   external_labels:
     monitor: 'server-monitor'
 rule_files:
-  - "/etc/prometheus/rules/alert_rules.yml"
+  - "/home/fangtang268/prometheus-monitor/config/prometheus/rules/alert_rules.yml"  # 修正路径
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
