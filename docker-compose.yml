@@ -1,0 +1,138 @@
+version: '3.8'
+
+# 自定义网络（避免端口冲突）
+networks:
+  monitor-network:
+    driver: bridge
+
+# 数据卷（持久化存储，避免数据丢失）
+volumes:
+  prometheus-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ~/prometheus-monitor/data/prometheus
+  alertmanager-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ~/prometheus-monitor/data/alertmanager
+  grafana-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ~/prometheus-monitor/data/grafana
+
+services:
+  # Prometheus 服务（核心）
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    restart: always
+    networks:
+      - monitor-network
+    ports:
+      - "9090:9090"  # 明确端口，避免冲突
+    volumes:
+      - ~/prometheus-monitor/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ~/prometheus-monitor/config/prometheus/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'  # 支持热加载配置
+      - '--storage.tsdb.retention.time=15d'  # 数据保留15天（优化资源）
+    # 资源限制（提升系统利用率）
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+
+  # Node Exporter（采集服务器指标）
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: always
+    networks:
+      - monitor-network
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /etc/hostname:/etc/host_hostname:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)(2162|/)'
+      - '--collector.hostname=/etc/host_hostname'
+    # 解决权限问题
+    user: root
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # Alertmanager（告警管理）
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: always
+    networks:
+      - monitor-network
+    ports:
+      - "9093:9093"
+    volumes:
+      - ~/prometheus-monitor/config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # Grafana（可视化）
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: grafana
+    restart: always
+    networks:
+      - monitor-network
+    ports:
+      - "3000:3000"  # 确认端口未被占用（解决端口冲突）
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ~/prometheus-monitor/config/grafana:/etc/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=196745ft  # Grafana 登录密码
+      - GF_USERS_ALLOW_SIGN_UP=false  # 关闭注册
+      - GF_SERVER_HTTP_PORT=3000
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M

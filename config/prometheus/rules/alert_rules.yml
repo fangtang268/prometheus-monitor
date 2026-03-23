@@ -1,0 +1,59 @@
+groups:
+- name: server-monitor-alerts
+  rules:
+  - alert: HighCPUUsage
+    expr: 100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "服务器 CPU 使用率过高 ({{ $labels.instance }})"
+      description: "CPU 使用率 > 80% (当前值: {{ $value | humanizePercentage }})"
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "服务器 内存 使用率过高 ({{ $labels.instance }})"
+      description: "内存使用率 > 85% (当前值: {{ $value | humanizePercentage }})"
+  - alert: HighDiskUsage
+    expr: 100 - (node_filesystem_avail_bytes{mountpoint="/",fstype!="tmpfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!="tmpfs"} * 100) > 90
+    for: 1m
+    labels: {severity: critical}
+    annotations:
+      summary: "服务器 磁盘 使用率过高 ({{ $labels.instance }})"
+      description: "磁盘 / 使用率 > 90% (当前值: {{ $value | humanizePercentage }})"
+  - alert: HighNetworkTraffic
+    expr: sum(irate(node_network_transmit_bytes_total[5m])) by (instance) > 10485760
+    for: 2m
+    labels: {severity: warning}
+    annotations:
+      summary: "服务器 网络出流量过高 ({{ $labels.instance }})"
+      description: "网络出流量 > 10MB/s (当前值: {{ $value | humanizeBytes }})"
+  - alert: HighSystemLoad
+    expr: node_load1 > 4
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "服务器 系统负载过高 ({{ $labels.instance }})"
+      description: "1分钟负载 > 4 (当前值: {{ $value }})"
+  - alert: NodeExporterDown
+    expr: up{job="node_exporter"} == 0
+    for: 30s
+    labels: {severity: critical}
+    annotations:
+      summary: "Node Exporter 离线 ({{ $labels.instance }})"
+      description: "Node Exporter 已离线超过30秒"
+  - alert: PrometheusDown
+    expr: up{job="prometheus"} == 0
+    for: 30s
+    labels: {severity: critical}
+    annotations:
+      summary: "Prometheus 离线"
+      description: "Prometheus 已离线超过30秒"
+  - alert: HighDiskIO
+    expr: sum(irate(node_disk_io_time_seconds_total[5m])) by (instance) > 0.5
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "服务器 磁盘IO过高 ({{ $labels.instance }})"
+      description: "磁盘IO耗时占比 > 50% (当前值: {{ $value | humanizePercentage }})"

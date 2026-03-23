@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+  external_labels:
+    monitor: 'server-monitor'
+rule_files:
+  - "/etc/prometheus/rules/alert_rules.yml"
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 10s
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 10s
+    params:
+      collect[]: ['cpu','meminfo','diskstats','netdev','loadavg','filesystem','vmstat','netstat','process','entropy']
+    scrape_timeout: 5s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+      scheme: http
+      timeout: 10s

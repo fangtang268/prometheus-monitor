@@ -1,0 +1,6 @@
+data/
+logs/
+config/alertmanager/alertmanager.yml
+*.swp
+*.tmp
+*.log
